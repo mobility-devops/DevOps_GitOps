@@ -5,7 +5,7 @@
 배포 이력은 커밋으로 남고, 커밋을 되돌리면 롤백된다.
 
 > 설계 기준: 노션 「프로젝트 아키텍처」 6장(CD 흐름)·10장(저장소와 브랜치).
-> 사본은 [DevOps_Infra/docs/architecture.md](https://github.com/mobility-devops/DevOps_Infra/blob/main/docs/architecture.md).
+> 문서는 DevOps_Docs의 [프로젝트 아키텍처](https://github.com/mobility-devops/DevOps_Docs/blob/main/architecture/project-architecture.md).
 
 ## 상태
 
