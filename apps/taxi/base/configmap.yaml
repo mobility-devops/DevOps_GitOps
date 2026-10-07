@@ -1,0 +1,11 @@
+# 환경과 상관없는 앱 설정. 환경별 값(DB 주소 등)은 overlay에서 덧붙인다.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: taxi-config
+data:
+  SERVER_SHUTDOWN: graceful
+  MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED: "true"
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,prometheus
+  # p95 판정(Canary)에 필요한 히스토그램 버킷
+  MANAGEMENT_METRICS_DISTRIBUTION_PERCENTILES_HISTOGRAM_HTTP_SERVER_REQUESTS: "true"

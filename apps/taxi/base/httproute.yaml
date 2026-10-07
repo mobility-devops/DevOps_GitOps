@@ -1,0 +1,15 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: taxi
+spec:
+  parentRefs:
+    - name: taxi-gateway
+      namespace: gateway
+  hostnames:
+    - placeholder.invalid   # overlay가 환경별 주소로 바꾼다.
+  rules:
+    - backendRefs:
+        - name: taxi
+          port: 80
+          weight: 100       # Canary 때 Argo Rollouts가 고쳐 쓰는 자리

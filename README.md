@@ -9,18 +9,45 @@
 
 ## 상태
 
-아직 구조를 만들지 않았다. 아래는 만들 구조다.
+기본 구조(`apps/taxi/base`, `apps/taxi/overlays/dev`, CODEOWNERS)를 만들었다. 클러스터 없이 아래 명령으로 결과를 확인할 수 있다.
 
-## 폴더 구조 (예정)
+```bash
+kubectl kustomize apps/taxi/overlays/dev
+```
+
+`argocd/`, `platform/`, `secrets/`, `overlays/prod/`는 CD 단계를 진행하면서 채운다.
+
+## 폴더 구조
 
 ```text
 .github/     CODEOWNERS (dev 폴더 외 전체를 DevOps Project Team 소유로)
-argocd/      Application 정의 (App of Apps 루트 포함)
-apps/taxi/   base(공통) + overlays(dev, prod)
-platform/    Gateway API, Envoy Gateway, cert-manager, MetalLB, metrics-server,
+argocd/      Application 정의 (App of Apps 루트 포함)            ← 비어 있음
+apps/taxi/
+  base/      공통: ConfigMap, Deployment, Service, HTTPRoute, mysql Service + EndpointSlice
+  overlays/
+    dev/     namespace taxi-dev, 이미지 digest, dev DB 주소, dev 호스트 이름
+    prod/    (예정) Rollout(Canary)
+platform/    Gateway API, Envoy Gateway, cert-manager, MetalLB, metrics-server,   ← 비어 있음
              PriorityClass, Calico 정책, 수집 에이전트(Alloy, kube-state-metrics)
-secrets/     암호화된 SealedSecret만
+secrets/     암호화된 SealedSecret만                                ← 비어 있음
 ```
+
+### Jenkins(CI)가 바꾸는 곳
+
+`apps/taxi/overlays/dev/kustomization.yaml`의 `images[0].digest` 한 줄만 바꾼다.
+
+```bash
+cd apps/taxi/overlays/dev
+kustomize edit set image ghcr.io/mobility-devops/taxi-backend@sha256:<push한 이미지의 digest>
+```
+
+### 앱이 기대하는 것
+
+- 이미지: `ghcr.io/mobility-devops/taxi-backend`, 8080 포트, non-root 실행
+- Actuator: `/actuator/health/liveness`, `/actuator/health/readiness`, `/actuator/prometheus`
+- Secret `taxi-db`(키 `DB_USERNAME`, `DB_PASSWORD`). 처음에는 손으로 만들고 이후 SealedSecret으로 바꾼다.
+- DB는 클러스터 안의 `mysql` 이름(EndpointSlice → db-01 `192.168.56.31`)으로 접속한다.
+- Gateway: `gateway` namespace의 `taxi-gateway`(아직 없음, 플랫폼 단계에서 만든다)
 
 ## 배포 흐름
 

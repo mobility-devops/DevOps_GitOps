@@ -1,0 +1,4 @@
+# dev 폴더 외 전체(CODEOWNERS 자신 포함)는 DevOps Project Team 승인이 필요하다.
+# dev 폴더는 담당자 없음 → Jenkins dev PR이 승인 없이 자동 머지된다. (아키텍처 10장)
+*                          @mobility-devops/devops-project-team
+/apps/taxi/overlays/dev/
