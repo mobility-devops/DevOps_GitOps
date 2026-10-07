@@ -1,0 +1,25 @@
+# 클러스터 밖 db-01(192.168.56.31)을 클러스터 안에서 mysql 이라는 이름으로 부른다. (아키텍처 7장)
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+spec:
+  ports:
+    - name: mysql
+      port: 3306
+      targetPort: 3306
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: mysql-db-01
+  labels:
+    kubernetes.io/service-name: mysql
+addressType: IPv4
+ports:
+  - name: mysql
+    port: 3306
+    protocol: TCP
+endpoints:
+  - addresses:
+      - 192.168.56.31

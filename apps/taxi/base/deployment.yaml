@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taxi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: taxi
+  template:
+    metadata:
+      labels:
+        app: taxi
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: taxi
+          # 실제 이미지는 overlay의 images(digest)로 바뀐다.
+          image: ghcr.io/mobility-devops/taxi-backend:placeholder
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: taxi-config
+            # DB_USERNAME, DB_PASSWORD. 2단계는 평문 Secret, 5단계부터 SealedSecret
+            - secretRef:
+                name: taxi-db
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 10
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            periodSeconds: 5
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "-c", "sleep 5"]
+          # CPU limit은 걸지 않는다(throttling으로 p95가 튐). memory limit은 건다.
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]

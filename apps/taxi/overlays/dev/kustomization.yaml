@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: taxi-dev
+resources:
+  - ../../base
+  - namespace.yaml
+patches:
+  - path: patch-config.yaml
+  - path: patch-httproute.yaml
+    target:
+      kind: HTTPRoute
+      name: taxi
+# Jenkins(CI)는 아래 digest 한 줄만 바꾸는 PR을 만든다.
+images:
+  - name: ghcr.io/mobility-devops/taxi-backend
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
