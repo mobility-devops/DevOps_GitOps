@@ -1,0 +1,54 @@
+# Argo CD 본체 helm values. 본체는 Argo CD가 스스로 설치할 수 없으므로 Ansible이 설치한다.
+# 이 파일은 CD 담당이 제공하는 설치 스펙이다.
+#
+#   helm repo add argo https://argoproj.github.io/argo-helm && helm repo update
+#   helm install argocd argo/argo-cd -n argocd --create-namespace -f argocd/install/values.yaml
+#
+# 초기 admin 비밀번호:
+#   kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
+global:
+  domain: argocd.192-168-56-200.sslip.io
+
+configs:
+  cm:
+    # 차트 기본값은 EndpointSlice를 감시 대상에서 빼서, Git에 있는 EndpointSlice를 아예 적용하지 않는다.
+    # 그러면 apps/taxi/base/mysql-service.yaml의 mysql-db-01(→ db-01)이 안 만들어져 앱이 DB에 못 붙는다.
+    # 그래서 기본 목록을 그대로 두고 EndpointSlice만 뺐다. (Endpoints는 계속 제외)
+    resource.exclusions: |
+      - apiGroups:
+        - ''
+        kinds:
+        - Endpoints
+      - apiGroups:
+        - coordination.k8s.io
+        kinds:
+        - Lease
+      - apiGroups:
+        - authentication.k8s.io
+        - authorization.k8s.io
+        kinds:
+        - SelfSubjectReview
+        - TokenReview
+        - LocalSubjectAccessReview
+        - SelfSubjectAccessReview
+        - SelfSubjectRulesReview
+        - SubjectAccessReview
+      - apiGroups:
+        - certificates.k8s.io
+        kinds:
+        - CertificateSigningRequest
+      - apiGroups:
+        - cert-manager.io
+        kinds:
+        - CertificateRequest
+
+  params:
+    # TLS는 Gateway가 처리한다. 켜두면 리다이렉트가 끝없이 반복된다.
+    server.insecure: true
+
+server:
+  service:
+    type: ClusterIP   # 외부 노출은 Gateway(HTTPRoute)로만
+
+dex:
+  enabled: false      # 외부 SSO 안 씀. 로그인은 admin 계정

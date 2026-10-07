@@ -1,0 +1,12 @@
+# Envoy Gateway 설정. 컨트롤러(helm 차트)를 먼저 설치한 뒤 적용한다.
+#   helm install eg oci://docker.io/envoyproxy/gateway-helm -n envoy-gateway-system --create-namespace
+#   kubectl apply -k platform/envoy-gateway
+#
+# Gateway API CRD는 위 차트에 들어 있다. 따로 kubectl apply로 또 설치하지 않는다(버전 충돌).
+# 리소스마다 namespace가 달라서 여기서는 namespace를 일괄 지정하지 않는다.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - envoyproxy.yaml
+  - gatewayclass.yaml
+  - gateway.yaml

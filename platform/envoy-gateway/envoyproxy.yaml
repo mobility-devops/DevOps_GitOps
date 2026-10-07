@@ -1,0 +1,28 @@
+# Envoy 프록시(데이터 플레인) 설정. GatewayClass가 이 리소스를 참조한다.
+# GatewayClass에서 참조하는 EnvoyProxy는 Envoy Gateway 컨트롤러 namespace에 있어야 한다.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: taxi-proxy
+  namespace: envoy-gateway-system
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyDeployment:
+        # 머신마다 1개씩(호스트 / 노트북). 아키텍처 3장
+        replicas: 2
+        pod:
+          topologySpreadConstraints:
+            - maxSkew: 1
+              topologyKey: topology.kubernetes.io/zone   # 머신 기준 (host / laptop)
+              whenUnsatisfiable: ScheduleAnyway          # 노트북이 꺼지면 호스트로 옮겨가야 하므로
+              nodeTaintsPolicy: Honor
+              labelSelector:
+                matchLabels:
+                  gateway.envoyproxy.io/owning-gateway-name: taxi-gateway
+                  gateway.envoyproxy.io/owning-gateway-namespace: gateway
+      envoyService:
+        # Gateway VIP를 .200으로 고정. Gateway spec.addresses가 MetalLB에서 안 먹을 때를 대비한 방식.
+        annotations:
+          metallb.io/loadBalancerIPs: 192.168.56.200

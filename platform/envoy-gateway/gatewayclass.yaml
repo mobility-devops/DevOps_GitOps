@@ -1,0 +1,12 @@
+# 차트가 GatewayClass를 만들지 않으므로 직접 만든다.
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: eg
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+  parametersRef:
+    group: gateway.envoyproxy.io
+    kind: EnvoyProxy
+    name: taxi-proxy
+    namespace: envoy-gateway-system
