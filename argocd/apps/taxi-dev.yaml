@@ -1,0 +1,31 @@
+# dev 환경 Application. (4단계)
+# Argo CD가 약 3분마다 main 브랜치의 overlays/dev를 가져와 클러스터와 비교하고, 다르면 적용한다.
+# 저장소가 public이라 인증 정보가 필요 없다.
+#
+#   kubectl apply -f argocd/apps/taxi-dev.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: taxi-dev
+  namespace: argocd
+spec:
+  project: default
+  source:                                         # 어디서 가져올까
+    repoURL: https://github.com/mobility-devops/DevOps_GitOps
+    targetRevision: main
+    path: apps/taxi/overlays/dev
+  destination:                                    # 어디에 놓을까
+    server: https://kubernetes.default.svc        # Argo CD 자신이 있는 클러스터
+    namespace: taxi-dev
+  syncPolicy:
+    automated:
+      prune: true        # Git에서 지운 건 클러스터에서도 지운다
+      selfHeal: true     # 손으로 고친 건 Git 상태로 되돌린다
+    syncOptions:
+      - CreateNamespace=true
+    retry:               # 순서가 어긋나도 몇 번 재시도하면 앞 단계가 준비된다
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

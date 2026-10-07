@@ -1,0 +1,21 @@
+# MetalLB가 LoadBalancer Service에 나눠줄 br-lab 대역 IP. (아키텍처 4장)
+# .200은 Gateway 고정(sslip.io 이름이 IP에 묶임), 나머지는 예비.
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: br-lab
+  namespace: metallb-system
+spec:
+  addresses:
+    - 192.168.56.200-192.168.56.220
+---
+# L2 모드: VIP에 대한 ARP 요청에 speaker가 자기 MAC으로 응답한다.
+# 호스트·노트북이 같은 L2(br-lab 랜선 직결)여야 양쪽에서 .200이 보인다.
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: br-lab
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+    - br-lab

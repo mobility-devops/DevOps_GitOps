@@ -1,0 +1,19 @@
+# Argo CD 화면을 Gateway의 argocd 입구로 연다. (아키텍처 4장)
+# TLS는 Gateway가 처리하므로 Argo CD 서버는 HTTP 모드(server.insecure)로 둔다.
+# 그러지 않으면 Argo CD가 HTTPS로 리다이렉트를 반복한다.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: argocd-server
+  namespace: argocd
+spec:
+  parentRefs:
+    - name: taxi-gateway
+      namespace: gateway
+      sectionName: argocd-http
+  hostnames:
+    - argocd.192-168-56-200.sslip.io
+  rules:
+    - backendRefs:
+        - name: argocd-server
+          port: 80
