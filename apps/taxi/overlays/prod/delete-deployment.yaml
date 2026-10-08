@@ -1,0 +1,7 @@
+# prod는 Deployment 대신 Rollout(rollout.yaml)으로 띄운다. base의 Deployment는 빼낸다.
+# kustomize는 kind를 바꾸는 패치를 못 해서, 지우고 새로 넣는 방식(CD 가이드 7단계 A안)을 쓴다.
+$patch: delete
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taxi

@@ -1,0 +1,19 @@
+# Argo Rollouts helm values. 6단계(App of Apps)에서 Application으로 옮기기 전까지는 손으로 설치한다.
+#   helm repo add argo https://argoproj.github.io/argo-helm && helm repo update
+#   helm install argo-rollouts argo/argo-rollouts -n argo-rollouts --create-namespace -f platform/argo-rollouts/values.yaml
+# kind 리허설(2026-10-07)에서 플러그인 v0.17.0으로 Envoy Gateway HTTPRoute weight 조절 확인
+controller:
+  # Gateway API trafficRouting은 Rollouts 기본 내장이 아니라 플러그인으로 붙인다. (CD 가이드 7단계)
+  # 컨트롤러가 시작할 때 아래 주소에서 플러그인 바이너리를 내려받는다.
+  trafficRouterPlugins:
+    - name: argoproj-labs/gatewayAPI
+      location: https://github.com/argoproj-labs/rollouts-plugin-trafficrouter-gatewayapi/releases/download/v0.17.0/gatewayapi-plugin-linux-amd64
+
+# HTTPRoute weight를 고칠 권한. 차트 기본값이 true지만 의도를 드러내려고 명시
+providerRBAC:
+  providers:
+    gatewayAPI: true
+
+# 브라우저로 Canary 진행 상황을 보는 화면 (port-forward로 열기)
+dashboard:
+  enabled: true

@@ -1,0 +1,14 @@
+# prod 주소로 바꾸고, Canary용 두 번째 backend(taxi-canary)를 붙인다.
+# weight는 평소엔 stable 100 / canary 0이고, Canary 중에는 Argo Rollouts가 고쳐 쓴다.
+- op: replace
+  path: /spec/hostnames
+  value:
+    - taxi.192-168-56-200.sslip.io
+- op: add
+  path: /spec/rules/0/backendRefs/-
+  value:
+    group: ""          # base와 같은 이유로 기본값을 명시
+    kind: Service
+    name: taxi-canary
+    port: 80
+    weight: 0

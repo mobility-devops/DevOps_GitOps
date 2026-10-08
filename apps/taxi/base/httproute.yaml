@@ -9,7 +9,16 @@ spec:
   hostnames:
     - placeholder.invalid   # overlay가 환경별 주소로 바꾼다.
   rules:
-    - backendRefs:
-        - name: taxi
+    # group·kind·matches는 쿠버네티스가 저장할 때 자동으로 채우는 기본값이다.
+    # Git에도 똑같이 적어 두지 않으면, Canary 완료 후 플러그인이 HTTPRoute를 다시 저장했을 때
+    # Argo CD가 기본값을 차이로 보고 OutOfSync로 표시한다. (kind 리허설에서 확인)
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - group: ""
+          kind: Service
+          name: taxi
           port: 80
           weight: 100       # Canary 때 Argo Rollouts가 고쳐 쓰는 자리
