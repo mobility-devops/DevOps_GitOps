@@ -2,13 +2,12 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: taxi-prod
 resources:
-  - ../../base
+  - workload                             # base + Rollout (Pod 설정은 base에서 자동 복사)
   - namespace.yaml
-  - rollout.yaml
   - service-canary.yaml
   - pdb.yaml
 patches:
-  - path: delete-deployment.yaml         # base Deployment 대신 rollout.yaml을 쓴다
+  - path: delete-deployment.yaml         # 복사가 끝난 base Deployment를 지운다 (prod는 Rollout만 씀)
   - path: patch-config.yaml              # DB 이름 taxi_prod
   - path: patch-httproute.yaml           # prod 주소 + canary backend 추가
     target:
