@@ -9,6 +9,8 @@ metadata:
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "2"     # [wave 2 앱] 플랫폼(wave -1, 0)이 다 뜬 뒤
+    # prod 배포 완료 알림만 따로 구독한다. (장애·멈춤 알림은 argocd/install/values.yaml의 전체 구독)
+    notifications.argoproj.io/subscribe.on-deployed.slack: taxi-deploy
 spec:
   project: default
   source:

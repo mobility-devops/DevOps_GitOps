@@ -69,3 +69,84 @@ server:
 
 dex:
   enabled: false      # 외부 SSO 안 씀. 로그인은 admin 계정
+
+# 배포 알림 (Argo CD Notifications). (CD 가이드 9단계, 롤백 절차: docs/runbook-rollback.md)
+# Argo CD가 Application 상태를 보고 Slack #taxi-deploy 채널로 알린다.
+#
+#   🔴 on-health-degraded : Degraded (Canary 자동 롤백, 장애)     → Runbook대로 되돌림 PR
+#   🟡 on-health-suspended: Suspended (Canary가 멈춤)            → 사람이 promote/abort 결정
+#   🟠 on-sync-failed     : Git 내용을 클러스터에 적용하지 못함     → 설정 오류 확인
+#   🟢 on-deployed        : 새 커밋이 적용되고 Healthy (prod만)     → 배포 완료, 롤백 후 복구 확인
+#
+# Slack 토큰은 아직 없다(채널 생성 전). 토큰이 없으면 알림 전송만 실패하고 Argo CD 동작에는 영향이 없다.
+# 채널을 만들면 토큰을 SealedSecret(argocd-notifications-secret, 키 slack-token)으로 잠가 넣고
+# 아래 secret.create를 false로 바꾼다. (토큰은 비밀값이라 이 파일에 적지 않는다)
+notifications:
+  argocdUrl: http://argocd.192-168-56-200.sslip.io     # 알림 속 링크. Gateway가 HTTP라 http로 적는다
+
+  secret:
+    create: true            # 지금은 빈 Secret. SealedSecret으로 바꿀 때 false
+
+  notifiers:
+    service.slack: |
+      token: $slack-token
+
+  # 모든 Application의 장애·멈춤·적용 실패를 알린다. 루트는 자식 상태를 그대로 따라 하므로 중복 알림이 되어 뺀다.
+  # (root-app.yaml의 라벨 notifications: "off")
+  subscriptions:
+    - recipients:
+        - slack:taxi-deploy
+      selector: notifications!=off
+      triggers:
+        - on-health-degraded
+        - on-health-suspended
+        - on-sync-failed
+  # 배포 완료(on-deployed)는 prod만 받는다. 커밋마다 모든 앱에서 울리면 시끄러워서
+  # argocd/apps/taxi-prod.yaml에 annotation으로 따로 구독한다.
+
+  triggers:
+    trigger.on-health-degraded: |
+      - description: Application이 Degraded
+        send: [app-health-degraded]
+        when: app.status.health.status == 'Degraded'
+    trigger.on-health-suspended: |
+      - description: Application이 Suspended (Rollout이 멈춤)
+        send: [app-health-suspended]
+        when: app.status.health.status == 'Suspended'
+    trigger.on-sync-failed: |
+      - description: sync 실패
+        send: [app-sync-failed]
+        when: app.status.operationState != nil and app.status.operationState.phase in ['Error', 'Failed']
+    trigger.on-deployed: |
+      - description: 새 커밋이 적용되고 Healthy. 커밋마다 한 번
+        oncePer: app.status.sync.revision
+        send: [app-deployed]
+        when: app.status.operationState != nil and app.status.operationState.phase in ['Succeeded'] and app.status.health.status == 'Healthy'
+
+  templates:
+    template.app-health-degraded: |
+      message: |
+        :red_circle: *{{.app.metadata.name}}* 가 Degraded 상태입니다. (Canary 자동 롤백 또는 장애)
+        사용자는 이전 버전을 쓰고 있을 수 있습니다. Runbook에 따라 확인 후 되돌림 PR을 올려 주세요.
+        • 커밋: {{.app.status.sync.revision}}
+        • Argo CD: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}
+        • Runbook: https://github.com/mobility-devops/DevOps_GitOps/blob/main/docs/runbook-rollback.md
+    template.app-health-suspended: |
+      message: |
+        :large_yellow_circle: *{{.app.metadata.name}}* 배포가 멈춰 사람의 결정을 기다립니다.
+        (Canary 판정 불가: 새 버전 요청이 부족 / 또는 수동 승인 단계)
+        롤백도 승격도 하지 않은 상태입니다. Runbook의 '배포가 멈췄을 때' 절차에 따라 promote 또는 abort를 결정해 주세요.
+        • 커밋: {{.app.status.sync.revision}}
+        • Argo CD: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}
+        • Runbook: https://github.com/mobility-devops/DevOps_GitOps/blob/main/docs/runbook-rollback.md
+    template.app-sync-failed: |
+      message: |
+        :large_orange_circle: *{{.app.metadata.name}}* 에 Git 내용을 적용하지 못했습니다.
+        • 원인: {{.app.status.operationState.message}}
+        • 커밋: {{.app.status.sync.revision}}
+        • Argo CD: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}
+    template.app-deployed: |
+      message: |
+        :large_green_circle: *{{.app.metadata.name}}* 배포 완료 (Healthy)
+        • 커밋: {{.app.status.sync.revision}}
+        • Argo CD: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}
