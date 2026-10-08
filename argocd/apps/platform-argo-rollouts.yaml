@@ -1,0 +1,37 @@
+# [wave -1 컨트롤러] Argo Rollouts + Gateway API trafficRouting 플러그인.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-argo-rollouts
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  project: default
+  sources:
+    - repoURL: https://argoproj.github.io/argo-helm
+      chart: argo-rollouts
+      targetRevision: 2.43.6
+      helm:
+        releaseName: argo-rollouts
+        valueFiles:
+          - $values/platform/argo-rollouts/values.yaml            # 설정은 GitOps 저장소의 values 파일을 그대로 쓴다
+    - repoURL: https://github.com/mobility-devops/DevOps_GitOps
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argo-rollouts
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true          # 큰 CRD는 일반 apply의 annotation 크기 제한(256KB)에 걸린다
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

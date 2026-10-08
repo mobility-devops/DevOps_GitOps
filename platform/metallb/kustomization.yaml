@@ -1,7 +1,5 @@
-# MetalLB 설정. 컨트롤러(helm 차트)를 먼저 설치한 뒤 적용한다.
-#   helm repo add metallb https://metallb.github.io/metallb && helm repo update
-#   helm install metallb metallb/metallb -n metallb-system --create-namespace
-#   kubectl apply -k platform/metallb
+# MetalLB 설정(IP 풀, L2 광고). argocd/apps/platform-metallb-config.yaml이 적용한다(wave 0).
+# 컨트롤러는 argocd/apps/platform-metallb.yaml이 먼저 설치한다(wave -1).
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:

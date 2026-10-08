@@ -1,5 +1,5 @@
-# Argo Rollouts helm values. 6단계(App of Apps)에서 Application으로 옮기기 전까지는 손으로 설치한다.
-#   helm repo add argo https://argoproj.github.io/argo-helm && helm repo update
+# Argo Rollouts helm values. argocd/apps/platform-argo-rollouts.yaml이 이 파일로 설치한다(wave -1).
+# 손으로 설치할 때(연습용):
 #   helm install argo-rollouts argo/argo-rollouts -n argo-rollouts --create-namespace -f platform/argo-rollouts/values.yaml
 # kind 리허설(2026-10-07)에서 플러그인 v0.17.0으로 Envoy Gateway HTTPRoute weight 조절 확인
 controller:

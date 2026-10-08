@@ -1,0 +1,33 @@
+# [wave -1 컨트롤러] Envoy Gateway. Gateway API CRD는 이 차트에서만 설치한다(중복 설치 시 버전 충돌).
+# OCI 차트라 repoURL에 oci:// 를 붙이지 않는다(Argo CD 규칙).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-envoy-gateway
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  project: default
+  source:
+    repoURL: registry-1.docker.io/envoyproxy
+    chart: gateway-helm
+    targetRevision: v1.9.2
+    helm:
+      releaseName: eg
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: envoy-gateway-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true          # 큰 CRD는 일반 apply의 annotation 크기 제한(256KB)에 걸린다
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
