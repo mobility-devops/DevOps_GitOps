@@ -1,0 +1,7 @@
+# Sealed Secrets 열쇠 백업, 평문 Secret이 실수로 올라가지 않게 막는다. (저장소 public)
+# 열쇠 백업은 팀 클라우드 드라이브에 암호화해서만 보관한다. (secrets/README.md)
+*key-backup*
+*.key
+*.pem
+*-plain.yaml
+*.plain.yaml
