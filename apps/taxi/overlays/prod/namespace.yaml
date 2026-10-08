@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: taxi-prod
+  labels:
+    # 앱 namespace는 Pod Security restricted (아키텍처 9장)
+    pod-security.kubernetes.io/enforce: restricted

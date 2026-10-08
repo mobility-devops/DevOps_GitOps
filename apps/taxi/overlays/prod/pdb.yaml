@@ -1,0 +1,10 @@
+# 노드 점검·드레인 때 prod Pod이 한꺼번에 빠지지 않게 최소 1개는 남긴다. (CD 가이드 7단계)
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: taxi
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: taxi

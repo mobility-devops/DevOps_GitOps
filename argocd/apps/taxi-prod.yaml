@@ -1,0 +1,41 @@
+# prod 환경 Application. (7단계)
+# prod 폴더 변경은 CODEOWNERS 승인 후에만 main에 머지되므로, 머지된 내용은 자동으로 반영한다.
+#
+#   kubectl apply -f argocd/apps/taxi-prod.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: taxi-prod
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/mobility-devops/DevOps_GitOps
+    targetRevision: main
+    path: apps/taxi/overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: taxi-prod
+  # HTTPRoute 안에서 소유권을 나눈다. (CD 가이드 7단계)
+  #   경로·호스트·Service 이름 → Argo CD (Git이 정답)
+  #   weight                 → Argo Rollouts (Canary 중 10/30/60으로 바뀜)
+  # 이게 없으면 selfHeal이 weight를 Git 값(100/0)으로 되돌려 Canary가 깨진다.
+  ignoreDifferences:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      jqPathExpressions:
+        - .spec.rules[].backendRefs[].weight
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # 없으면 "차이로 보고만 안 하고 sync할 때는 덮어쓴다". weight를 진짜로 건드리지 않게 하는 핵심 줄
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

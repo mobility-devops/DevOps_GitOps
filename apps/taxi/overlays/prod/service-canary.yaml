@@ -1,0 +1,13 @@
+# Canary(새 버전) Pod만 가리키는 Service. 기존 Service taxi가 stable 역할을 한다.
+# 두 Service의 selector에는 Rollouts가 버전 해시(rollouts-pod-template-hash)를 자동으로 붙인다.
+apiVersion: v1
+kind: Service
+metadata:
+  name: taxi-canary
+spec:
+  selector:
+    app: taxi
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
