@@ -1,0 +1,164 @@
+# Grafana Alloy helm values. 클러스터 안의 앱 지표·kube-state-metrics 지표·Pod 로그를 모아 mon-01 로 보낸다. (아키텍처 8장)
+# argocd/apps/platform-alloy.yaml 이 이 파일로 설치한다(wave 1 수집).
+# 손으로 설치할 때(연습용):
+#   helm repo add grafana https://grafana.github.io/helm-charts && helm repo update
+#   helm install alloy grafana/alloy --version 1.13.0 -n monitoring --create-namespace -f platform/alloy/values.yaml
+# 차트 1.13.0 = Alloy v1.20.0. 설정 문법은 alloy v1.20.0 의 fmt 로 확인했다.
+# PriorityClass 는 따로 지정하지 않는다. 플랫폼 도구 등급이 기본값(globalDefault)이라 자동으로 붙는다. (아키텍처 3장)
+
+controller:
+  type: daemonset                    # master 포함 모든 노드에 1개 (아키텍처 3장 노드 배치). 각자 자기 노드 Pod 만 수집해 중복이 없다
+  tolerations:                       # master 의 taint 를 견뎌 master 에도 뜬다
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+
+# RBAC 최소 권한 (아키텍처 9장). 차트 기본값은 클러스터 전체 secrets·configmaps 읽기까지 포함하지만 이 설정에는 필요 없다.
+rbac:
+  create: true
+  rules:
+    - apiGroups: [""]
+      resources: ["pods", "pods/log", "namespaces"]   # Pod 찾기(discovery) + 로그 읽기(loki.source.kubernetes)
+      verbs: ["get", "list", "watch"]
+
+alloy:
+  extraEnv:
+    - name: NODE_NAME                # 설정의 sys.env("NODE_NAME") → 자기 노드 Pod 만 찾는 데 씀
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+  resources:                         # 모든 Pod 에 requests (아키텍처 3장). CPU limit 은 걸지 않고 memory limit 만 건다
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 384Mi }
+  configMap:
+    create: true
+    content: |-
+      // 이 노드에 뜬 Pod만 찾는다 (DaemonSet: 노드마다 Alloy 1개, 중복 수집 방지)
+      discovery.kubernetes "pods" {
+        role = "pod"
+
+        selectors {
+          role  = "pod"
+          field = "spec.nodeName=" + sys.env("NODE_NAME")
+        }
+      }
+
+      // ---------- 앱 지표 (taxi-prod, taxi-dev) ----------
+      discovery.relabel "app" {
+        targets = discovery.kubernetes.pods.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          regex         = "taxi-(prod|dev)"
+          action        = "keep"
+        }
+
+        // 컨테이너 포트 이름이 http 인 것만 (CD 담당과 약속)
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_port_name"]
+          regex         = "http"
+          action        = "keep"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_phase"]
+          regex         = "Running"
+          action        = "keep"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_node_name"]
+          target_label  = "node"
+        }
+
+        // Pod 라벨 rollouts-pod-template-hash → 지표 라벨 rollouts_pod_template_hash (Canary 판정용)
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_rollouts_pod_template_hash"]
+          target_label  = "rollouts_pod_template_hash"
+        }
+      }
+
+      prometheus.scrape "app" {
+        targets         = discovery.relabel.app.output
+        job_name        = "taxi"
+        metrics_path    = "/actuator/prometheus"
+        scrape_interval = "15s"
+        forward_to      = [prometheus.remote_write.mon.receiver]
+      }
+
+      // ---------- kube-state-metrics (그 Pod가 있는 노드의 Alloy만 수집) ----------
+      discovery.relabel "ksm" {
+        targets = discovery.kubernetes.pods.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+          regex         = "kube-state-metrics"
+          action        = "keep"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_port_name"]
+          regex         = "http"
+          action        = "keep"
+        }
+      }
+
+      prometheus.scrape "ksm" {
+        targets         = discovery.relabel.ksm.output
+        job_name        = "kube-state-metrics"
+        honor_labels    = true
+        scrape_interval = "30s"
+        forward_to      = [prometheus.remote_write.mon.receiver]
+      }
+
+      prometheus.remote_write "mon" {
+        endpoint {
+          url = "http://192.168.56.41:9090/api/v1/write"
+        }
+      }
+
+      // ---------- 로그 (이 노드의 모든 Pod) ----------
+      discovery.relabel "logs" {
+        targets = discovery.kubernetes.pods.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          target_label  = "container"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_node_name"]
+          target_label  = "node"
+        }
+      }
+
+      loki.source.kubernetes "pods" {
+        targets    = discovery.relabel.logs.output
+        forward_to = [loki.write.mon.receiver]
+      }
+
+      loki.write "mon" {
+        endpoint {
+          url = "http://192.168.56.41:3100/loki/api/v1/push"
+        }
+      }
