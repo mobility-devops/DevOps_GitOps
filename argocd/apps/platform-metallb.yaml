@@ -1,0 +1,35 @@
+# [wave -1 컨트롤러] MetalLB: LoadBalancer Service에 br-lab IP를 준다. CRD도 차트에 포함.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-metallb
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  project: default
+  source:
+    repoURL: https://metallb.github.io/metallb
+    chart: metallb
+    targetRevision: 0.16.1
+    helm:
+      releaseName: metallb
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: metallb-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    managedNamespaceMetadata:
+      labels:
+        pod-security.kubernetes.io/enforce: privileged    # speaker가 hostNetwork를 쓴다
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true          # 큰 CRD는 일반 apply의 annotation 크기 제한(256KB)에 걸린다
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

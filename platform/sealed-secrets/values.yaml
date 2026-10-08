@@ -1,6 +1,8 @@
 # Sealed Secrets 컨트롤러 helm values. (CD 가이드 5단계)
 # Git에는 암호화된 SealedSecret만 올리고, 클러스터 안의 컨트롤러가 자기 키로 풀어서 일반 Secret을 만든다.
 #
+# argocd/apps/platform-sealed-secrets.yaml이 이 파일로 설치한다(wave -1).
+# 손으로 설치할 때(연습용):
 #   helm repo add sealed-secrets https://bitnami.github.io/sealed-secrets && helm repo update
 #   helm install sealed-secrets sealed-secrets/sealed-secrets -n kube-system -f platform/sealed-secrets/values.yaml
 #

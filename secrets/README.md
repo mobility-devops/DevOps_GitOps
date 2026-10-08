@@ -24,8 +24,12 @@
 
 | 파일 | 만들어지는 Secret | 쓰는 곳 |
 | --- | --- | --- |
-| `taxi-dev-db.yaml` | `taxi-dev/taxi-db` (`DB_USERNAME`, `DB_PASSWORD`) | `apps/taxi` dev |
-| `taxi-prod-db.yaml` | `taxi-prod/taxi-db` (`DB_USERNAME`, `DB_PASSWORD`) | `apps/taxi` prod |
+| `taxi-dev/taxi-db.yaml` | `taxi-dev/taxi-db` (`DB_USERNAME`, `DB_PASSWORD`) | `apps/taxi/overlays/dev` |
+| `taxi-prod/taxi-db.yaml` | `taxi-prod/taxi-db` (`DB_USERNAME`, `DB_PASSWORD`) | `apps/taxi/overlays/prod` |
+
+- 환경별 폴더(`taxi-dev/`, `taxi-prod/`)를 각 overlay가 `resources`로 불러온다. 그래서 앱과 같은 Argo CD Application이 같은 sync에서 적용한다(namespace → SealedSecret → 앱 순서).
+- 파일을 추가하면 그 폴더의 `kustomization.yaml` `resources`에도 적는다.
+- `secrets/`는 dev 폴더 밖이라 CODEOWNERS 승인 대상이다.
 
 > 두 파일은 P4 클러스터와 실제 DB 계정이 준비된 뒤 추가한다. kind에서 잠근 파일은 실제 클러스터에서 풀리지 않는다.
 
@@ -38,10 +42,10 @@ kubectl create secret generic taxi-db -n taxi-dev \
   --from-literal=DB_USERNAME=taxi_dev \
   --from-literal=DB_PASSWORD='<비밀번호>' \
   --dry-run=client -o yaml \
-| kubeseal --format yaml > secrets/taxi-dev-db.yaml
+| kubeseal --format yaml > secrets/taxi-dev/taxi-db.yaml
 ```
 
-PowerShell에서는 `>` 대신 `| Set-Content -Encoding ascii secrets\taxi-dev-db.yaml`을 쓴다. (`>`는 UTF-16으로 저장된다)
+PowerShell에서는 `>` 대신 `| Set-Content -Encoding ascii secrets\taxi-dev\taxi-db.yaml`을 쓴다. (`>`는 UTF-16으로 저장된다)
 
 확인할 것:
 - 파일에 평문 비밀번호가 없다 (`encryptedData` 아래 암호문만 있음)
@@ -76,9 +80,8 @@ kubectl get secret -n kube-system -l sealedsecrets.bitnami.com/sealed-secrets-ke
 # 1) 열쇠 복원 (컨트롤러 설치 전)
 kubectl apply -f sealed-secrets-key-backup.yaml
 
-# 2) 컨트롤러 설치 → 켜지면서 복원된 열쇠를 읽는다
-helm repo add sealed-secrets https://bitnami.github.io/sealed-secrets
-helm install sealed-secrets sealed-secrets/sealed-secrets -n kube-system -f platform/sealed-secrets/values.yaml
+# 2) 루트 Application 등록 → Argo CD가 컨트롤러를 설치(wave -1)하고, 켜지면서 복원된 열쇠를 읽는다
+kubectl apply -f argocd/root-app.yaml
 ```
 
 컨트롤러가 이미 떠 있는 상태에서 복원했다면 다시 읽도록 재시작한다. 컨트롤러는 시작할 때만 열쇠를 읽는다.

@@ -23,3 +23,7 @@ ports:
 endpoints:
   - addresses:
       - 192.168.56.31
+    # 쿠버네티스가 빈 conditions: {} 를 채워 넣어 Argo CD가 OutOfSync로 본다. 값을 미리 적어 둔다.
+    # ready를 비워 두면 '준비됨'으로 취급되므로 true와 동작은 같다.
+    conditions:
+      ready: true

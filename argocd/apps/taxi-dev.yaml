@@ -2,12 +2,14 @@
 # Argo CD가 약 3분마다 main 브랜치의 overlays/dev를 가져와 클러스터와 비교하고, 다르면 적용한다.
 # 저장소가 public이라 인증 정보가 필요 없다.
 #
-#   kubectl apply -f argocd/apps/taxi-dev.yaml
+# 루트 Application(argocd/root-app.yaml)이 이 파일을 등록한다.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: taxi-dev
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"     # [wave 2 앱] 플랫폼(wave -1, 0)이 다 뜬 뒤
 spec:
   project: default
   source:                                         # 어디서 가져올까

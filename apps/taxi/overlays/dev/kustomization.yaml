@@ -4,6 +4,7 @@ namespace: taxi-dev
 resources:
   - ../../base
   - namespace.yaml
+  - ../../../../secrets/taxi-dev          # SealedSecret(DB 계정). secrets/ 는 CODEOWNERS 승인 대상
 patches:
   - path: patch-config.yaml
   - path: patch-httproute.yaml

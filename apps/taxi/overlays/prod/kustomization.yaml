@@ -4,6 +4,7 @@ namespace: taxi-prod
 resources:
   - workload                             # base + Rollout (Pod 설정은 base에서 자동 복사)
   - namespace.yaml
+  - ../../../../secrets/taxi-prod          # SealedSecret(DB 계정). secrets/ 는 CODEOWNERS 승인 대상
   - service-canary.yaml
   - pdb.yaml
 patches:

@@ -42,6 +42,23 @@ configs:
         kinds:
         - CertificateRequest
 
+    # App of Apps에서 sync wave 순서를 지키려면 루트가 자식 Application의 건강 상태를 기다려야 한다.
+    # Argo CD 1.8부터 Application 자체의 health 판정이 빠져서, 이 설정이 없으면 wave -1이 다 뜨기 전에
+    # wave 0이 시작된다(예: EnvoyProxy CRD가 없는데 EnvoyProxy를 만들려다 실패). (CD 가이드 6단계)
+    resource.customizations.health.argoproj.io_Application: |
+      hs = {}
+      hs.status = "Progressing"
+      hs.message = ""
+      if obj.status ~= nil then
+        if obj.status.health ~= nil then
+          hs.status = obj.status.health.status
+          if obj.status.health.message ~= nil then
+            hs.message = obj.status.health.message
+          end
+        end
+      end
+      return hs
+
   params:
     # TLS는 Gateway가 처리한다. 켜두면 리다이렉트가 끝없이 반복된다.
     server.insecure: true
