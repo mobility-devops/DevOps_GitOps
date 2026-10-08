@@ -1,0 +1,122 @@
+# Canary 단계 판정. (CD 가이드 8단계)
+# Rollout이 10%·30%·60% 단계마다 이 템플릿으로 분석을 돌린다. 세 가지를 동시에 실행한다.
+#   load       : k6로 Gateway에 일정한 요청을 보낸다 (실제 사용자가 없으므로)
+#   error-rate : 새 버전의 에러율 < 1%
+#   latency-p95: 새 버전의 p95 ≤ 500ms
+# 하나라도 실패하면 Rollouts가 weight를 0으로 되돌린다(자동 롤백).
+#
+# 판정 결과는 세 가지다.
+#   성공           : 기준 통과
+#   실패           : 기준 초과 → 자동 롤백
+#   판정 불가       : 새 버전 요청이 1분에 200건 미만 → 배포를 멈추고 사람이 promote/abort 결정
+#                   (요청이 적으면 1건 실패로도 에러율이 크게 튀어서, 진짜 문제인지 우연인지 알 수 없다)
+#   → 쿼리가 요청이 부족할 때 -1을 돌려주게 해서, 성공 조건(≥0)에도 실패 조건(≥기준)에도 안 걸리게 만든다.
+#
+# 지표 조건 (모니터링 담당과 합의 필요)
+#   - rollouts_pod_template_hash : Pod 라벨 rollouts-pod-template-hash를 수집할 때 붙인 라벨. 새 버전 Pod만 고른다
+#   - uri!~"/actuator.*"         : probe·지표 수집 요청은 항상 200에 1ms라, 섞이면 에러율·p95가 실제보다 좋게 나온다
+#   - _bucket                    : ConfigMap의 히스토그램 설정(PERCENTILESHISTOGRAM)이 켜져 있어야 생긴다
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: canary-analysis
+spec:
+  args:
+    - name: canary-hash                         # Rollout이 새 버전 Pod 해시를 넘겨준다
+    - name: prometheus-address
+      value: http://192.168.56.41:9090          # mon-01. 클러스터 밖이라 VM 주소를 직접 쓴다
+    - name: target-url
+      value: http://192.168.56.200              # Gateway (MetalLB VIP)
+    - name: target-host
+      value: taxi.192-168-56-200.sslip.io       # prod 창구 호스트 이름
+    - name: rate
+      value: "50"                               # 초당 요청 수. 10% 단계에서 50 × 60초 × 0.1 = 300건 ≥ 200건
+  metrics:
+    # ── 부하 ────────────────────────────────────────────────
+    # 아래 두 판정(첫 측정 60초 후, 30초 간격 3번 = 120초)이 끝날 때까지 요청을 보낸다.
+    - name: load
+      provider:
+        job:
+          spec:
+            backoffLimit: 0
+            activeDeadlineSeconds: 300
+            template:
+              spec:
+                restartPolicy: Never
+                securityContext:                # taxi-prod는 Pod Security restricted
+                  runAsNonRoot: true
+                  runAsUser: 12345              # k6 이미지의 사용자. 이름이 아니라 숫자로 적어야 restricted 검사를 통과한다
+                  seccompProfile:
+                    type: RuntimeDefault
+                containers:
+                  - name: k6
+                    image: grafana/k6:0.52.0
+                    args: ["run", "--quiet", "/scripts/load.js"]
+                    env:
+                      - name: TARGET_URL
+                        value: "{{args.target-url}}"
+                      - name: TARGET_HOST
+                        value: "{{args.target-host}}"
+                      - name: RATE
+                        value: "{{args.rate}}"
+                      - name: DURATION
+                        value: 150s
+                    resources:
+                      requests:
+                        cpu: 100m
+                        memory: 64Mi
+                      limits:
+                        memory: 256Mi
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      capabilities:
+                        drop: ["ALL"]
+                    volumeMounts:
+                      - name: scripts
+                        mountPath: /scripts
+                volumes:
+                  - name: scripts
+                    configMap:
+                      name: taxi-k6-scripts
+
+    # ── 에러율 < 1% ─────────────────────────────────────────
+    - name: error-rate
+      initialDelay: 60s                         # 부하가 1분 쌓인 뒤부터 잰다 (쿼리 창이 1분)
+      interval: 30s
+      count: 3
+      failureLimit: 1                           # 2번 넘으면 실패. 새 Pod 첫 요청이 튀는 경우 1번은 봐준다
+      inconclusiveLimit: 1                      # 판정 불가도 2번 넘으면 멈춘다
+      consecutiveErrorLimit: 2                  # Prometheus에 연결 못 하면 3번째에 오류 → 배포 중단
+      successCondition: "result[0] >= 0 && result[0] < 0.01"
+      failureCondition: "result[0] >= 0.01"
+      provider:
+        prometheus:
+          address: "{{args.prometheus-address}}"
+          query: |
+            (
+                (sum(rate(http_server_requests_seconds_count{namespace="taxi-prod", rollouts_pod_template_hash="{{args.canary-hash}}", uri!~"/actuator.*", status=~"5.."}[1m])) or on() vector(0))
+              /
+                sum(rate(http_server_requests_seconds_count{namespace="taxi-prod", rollouts_pod_template_hash="{{args.canary-hash}}", uri!~"/actuator.*"}[1m]))
+            )
+            and on() (sum(increase(http_server_requests_seconds_count{namespace="taxi-prod", rollouts_pod_template_hash="{{args.canary-hash}}", uri!~"/actuator.*"}[1m])) >= 200)
+            or on() vector(-1)
+
+    # ── p95 ≤ 500ms ─────────────────────────────────────────
+    - name: latency-p95
+      initialDelay: 60s
+      interval: 30s
+      count: 3
+      failureLimit: 1
+      inconclusiveLimit: 1
+      consecutiveErrorLimit: 2
+      successCondition: "result[0] >= 0 && result[0] <= 0.5"
+      failureCondition: "result[0] > 0.5"
+      provider:
+        prometheus:
+          address: "{{args.prometheus-address}}"
+          query: |
+            histogram_quantile(0.95,
+              sum by (le) (rate(http_server_requests_seconds_bucket{namespace="taxi-prod", rollouts_pod_template_hash="{{args.canary-hash}}", uri!~"/actuator.*"}[1m]))
+            )
+            and on() (sum(increase(http_server_requests_seconds_count{namespace="taxi-prod", rollouts_pod_template_hash="{{args.canary-hash}}", uri!~"/actuator.*"}[1m])) >= 200)
+            or on() vector(-1)

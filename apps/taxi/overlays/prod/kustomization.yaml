@@ -7,6 +7,7 @@ resources:
   - ../../../../secrets/taxi-prod          # SealedSecret(DB 계정). secrets/ 는 CODEOWNERS 승인 대상
   - service-canary.yaml
   - pdb.yaml
+  - analysis                             # Canary 자동 판정 템플릿 (Rollout 연결은 파트 E)
 patches:
   - path: delete-deployment.yaml         # 복사가 끝난 base Deployment를 지운다 (prod는 Rollout만 씀)
   - path: patch-config.yaml              # DB 이름 taxi_prod
