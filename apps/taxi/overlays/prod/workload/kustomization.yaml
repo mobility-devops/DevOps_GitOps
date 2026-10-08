@@ -1,0 +1,42 @@
+# 1단계: base(Deployment 포함)와 Rollout을 합치고, base Deployment의 Pod 설정을 Rollout에 복사한다.
+# Deployment는 바깥 단계(../kustomization.yaml)에서 지운다.
+# 한 단계에서 지우면 복사보다 삭제가 먼저 실행돼서 복사할 원본이 사라진다.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../../base
+  - rollout.yaml
+replacements:
+  # 컨테이너 설정 전체 (이미지, 포트, 환경변수, probe, preStop, resources, 보안 설정)
+  - source:
+      kind: Deployment
+      name: taxi
+      fieldPath: spec.template.spec.containers.[name=taxi]
+    targets:
+      - select:
+          kind: Rollout
+          name: taxi
+        fieldPaths:
+          - spec.template.spec.containers.[name=taxi]
+  # Pod 단위 보안 설정 (non-root, seccomp)
+  - source:
+      kind: Deployment
+      name: taxi
+      fieldPath: spec.template.spec.securityContext
+    targets:
+      - select:
+          kind: Rollout
+          name: taxi
+        fieldPaths:
+          - spec.template.spec.securityContext
+  # 종료 대기 시간 (graceful shutdown)
+  - source:
+      kind: Deployment
+      name: taxi
+      fieldPath: spec.template.spec.terminationGracePeriodSeconds
+    targets:
+      - select:
+          kind: Rollout
+          name: taxi
+        fieldPaths:
+          - spec.template.spec.terminationGracePeriodSeconds
