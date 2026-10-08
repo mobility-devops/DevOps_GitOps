@@ -18,6 +18,8 @@ kind: Application
 metadata:
   name: root
   namespace: argocd
+  labels:
+    notifications: "off"     # 루트는 자식 상태를 그대로 따라 해서 알림이 중복된다. 전체 알림 구독에서 뺀다
 spec:
   project: default
   source:
