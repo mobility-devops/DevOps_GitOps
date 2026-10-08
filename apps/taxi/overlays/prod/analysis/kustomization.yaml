@@ -1,0 +1,28 @@
+# Canary 자동 판정 재료. (CD 가이드 8단계)
+# 템플릿만 클러스터에 올려 두고, Rollout 단계에 연결하는 건 Prometheus(mon-01)가 준비된 뒤(파트 E)에 한다.
+# 지금 연결하면 판정할 지표가 없어 prod 배포가 전부 멈춘다.
+#
+# 파트 E에서 workload/rollout.yaml의 steps를 아래처럼 바꾼다. (pause 자리에 분석이 들어감)
+#   - setCanaryScale: {replicas: 2}
+#   - analysis: {templates: [{templateName: smoke-test}]}          # 트래픽 넣기 전 새 버전만 확인
+#   - setWeight: 10
+#   - analysis:
+#       templates: [{templateName: canary-analysis}]
+#       args: [{name: canary-hash, valueFrom: {podTemplateHashValue: Latest}}]
+#   - setWeight: 30
+#   - analysis: (위와 같음)
+#   - setWeight: 60
+#   - analysis: (위와 같음)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - smoke-test.yaml
+  - canary-analysis.yaml
+configMapGenerator:
+  - name: taxi-k6-scripts
+    files:
+      - k6/smoke.js
+      - k6/load.js
+generatorOptions:
+  # AnalysisTemplate은 CRD라 kustomize가 ConfigMap 이름 변경(해시 접미사)을 따라 고치지 못한다. 이름을 고정한다.
+  disableNameSuffixHash: true

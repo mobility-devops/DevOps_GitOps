@@ -1,0 +1,48 @@
+# Smoke Test. (CD 가이드 8단계)
+# 새 버전 Pod이 뜬 직후, 사용자 트래픽을 보내기 전(weight 0)에 새 버전에만 직접 요청을 보내 기본 동작을 확인한다.
+#   readiness → 가입 → 조회 (k6/smoke.js)
+# 실패하면 사용자는 새 버전을 한 번도 보지 않은 채 자동 롤백된다.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: smoke-test
+spec:
+  metrics:
+    - name: smoke
+      provider:
+        job:
+          spec:
+            backoffLimit: 0
+            activeDeadlineSeconds: 120
+            template:
+              spec:
+                restartPolicy: Never
+                securityContext:                # taxi-prod는 Pod Security restricted
+                  runAsNonRoot: true
+                  runAsUser: 12345              # k6 이미지의 사용자. 숫자로 적어야 restricted 검사를 통과한다
+                  seccompProfile:
+                    type: RuntimeDefault
+                containers:
+                  - name: k6
+                    image: grafana/k6:0.52.0
+                    args: ["run", "--quiet", "/scripts/smoke.js"]
+                    env:
+                      - name: TARGET_URL
+                        value: http://taxi-canary      # 새 버전 Pod만 가리키는 Service (같은 namespace)
+                    resources:
+                      requests:
+                        cpu: 50m
+                        memory: 32Mi
+                      limits:
+                        memory: 128Mi
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      capabilities:
+                        drop: ["ALL"]
+                    volumeMounts:
+                      - name: scripts
+                        mountPath: /scripts
+                volumes:
+                  - name: scripts
+                    configMap:
+                      name: taxi-k6-scripts
