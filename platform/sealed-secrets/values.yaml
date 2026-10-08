@@ -1,0 +1,15 @@
+# Sealed Secrets 컨트롤러 helm values. (CD 가이드 5단계)
+# Git에는 암호화된 SealedSecret만 올리고, 클러스터 안의 컨트롤러가 자기 키로 풀어서 일반 Secret을 만든다.
+#
+#   helm repo add sealed-secrets https://bitnami.github.io/sealed-secrets && helm repo update
+#   helm install sealed-secrets sealed-secrets/sealed-secrets -n kube-system -f platform/sealed-secrets/values.yaml
+#
+# 클러스터를 새로 만들 때는 컨트롤러보다 "키 복원"이 먼저다. (secrets/README.md의 백업·복원 절차)
+
+# kubeseal CLI가 기본으로 찾는 이름(kube-system/sealed-secrets-controller)에 맞춘다.
+# 차트 기본 이름(sealed-secrets)을 쓰면 kubeseal마다 --controller-name을 붙여야 한다.
+fullnameOverride: sealed-secrets-controller
+
+# 키 갱신 주기: 기본 30일(빈 값). 새 키가 추가될 뿐 옛 키는 지워지지 않아 기존 SealedSecret도 계속 풀린다.
+# 대신 새 키가 생기면 백업도 다시 떠야 한다 → 팀 정책: 처음 1회 + 매주 1회 백업 (아키텍처 7장)
+keyrenewperiod: ""
