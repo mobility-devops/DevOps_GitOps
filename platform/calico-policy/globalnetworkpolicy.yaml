@@ -1,0 +1,45 @@
+# 클러스터 밖 서버(db-01, mon-01)로 나가는 통신을 정해진 Pod 만 하게 한다. (아키텍처 7장, 모니터링 PR #10 리뷰)
+#   db-01:3306        ← taxi-dev·taxi-prod 의 앱 Pod(app=taxi)만
+#   mon-01:9090·3100  ← Alloy(지표·로그 전송), Argo Rollouts(Canary 판정 쿼리, 9090)만
+# 그 밖의 통신은 여기서 판단하지 않고 다음 tier 로 넘긴다(Pass) → 지금은 전부 허용.
+#   예: Alloy → 앱 8080 수집, k6 Job → Gateway(.200), Argo CD → GitHub, CoreDNS → 외부 DNS
+# Egress 만 다루므로 들어오는 통신(mon-01 blackbox → Gateway 등)에는 영향이 없다.
+# 앱은 mysql Service(ClusterIP) 로 접속하지만, 정책은 주소 변환(DNAT) 뒤의 목적지 192.168.56.31 로 판단한다.
+apiVersion: projectcalico.org/v3
+kind: GlobalNetworkPolicy
+metadata:
+  name: cd-egress.restrict-external-servers   # tier 이름을 앞에 붙여 어느 tier 정책인지 보이게 함 (v3.33 에서는 필수 아님)
+spec:
+  tier: cd-egress
+  order: 100
+  selector: all()
+  types:
+    - Egress
+  egress:
+    - action: Allow
+      protocol: TCP
+      source:
+        namespaceSelector: kubernetes.io/metadata.name in {"taxi-dev", "taxi-prod"}
+        selector: app == "taxi"
+      destination:
+        nets: ["192.168.56.31/32"]
+        ports: [3306]
+    - action: Allow
+      protocol: TCP
+      source:
+        namespaceSelector: kubernetes.io/metadata.name == "monitoring"
+        selector: app.kubernetes.io/name == "alloy"
+      destination:
+        nets: ["192.168.56.41/32"]
+        ports: [9090, 3100]
+    - action: Allow
+      protocol: TCP
+      source:
+        namespaceSelector: kubernetes.io/metadata.name == "argo-rollouts"
+      destination:
+        nets: ["192.168.56.41/32"]
+        ports: [9090]
+    - action: Deny
+      destination:
+        nets: ["192.168.56.31/32", "192.168.56.41/32"]
+    - action: Pass
