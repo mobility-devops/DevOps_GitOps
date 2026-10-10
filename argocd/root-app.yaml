@@ -7,11 +7,12 @@
 #   3) kubectl apply -f argocd/root-app.yaml
 #
 # sync wave
+#   -2 우선순위   PriorityClass (globalDefault platform 포함, 이후 뜨는 Pod 가 등급을 받게 가장 먼저)
 #   -1 컨트롤러   MetalLB, Envoy Gateway(+Gateway API CRD), Sealed Secrets, Argo Rollouts
 #    0 설정       MetalLB IP 풀, GatewayClass·EnvoyProxy·Gateway, Argo CD 화면 HTTPRoute
-#    1 수집       (예정) Alloy, kube-state-metrics
+#    1 수집       Alloy, kube-state-metrics (모니터링 담당)
 #    2 앱         taxi-dev, taxi-prod
-# 각 컨트롤러 차트가 자기 CRD를 함께 설치하므로 CRD 전용 wave(-2)는 두지 않았다.
+# 각 컨트롤러 차트가 자기 CRD를 함께 설치하므로 CRD 전용 wave는 두지 않았다. (-2는 PriorityClass 전용)
 # Argo CD 자신은 등록하지 않는다(설정 실수 한 번에 복구가 꼬임). 가장 마지막에 따로 붙인다.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
