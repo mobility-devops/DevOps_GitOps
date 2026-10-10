@@ -73,7 +73,7 @@ Git이 이전 버전으로 돌아가면 Rollout은 **Canary 단계 없이 바로
 | --- | --- |
 | `kubectl argo rollouts undo`, `kubectl set image`로 직접 되돌리기 | Argo CD selfHeal이 Git 값(실패한 버전)으로 다시 바꿔서 배포가 또 시작된다 |
 | 되돌림 PR 머지 전 prod·base에 다른 PR 머지 | 실패한 버전으로 Canary가 처음부터 다시 시작된다 (위 경고) |
-| `kubectl argo rollouts promote --full` | 판정을 전부 건너뛰고 100%로 보낸다. 고장 난 버전을 사용자 전원에게 내보낸다 |
+| `kubectl argo rollouts promote --full` | 판정을 전부 건너뛰고 100%로 보낸다. 고장 난 버전을 사용자 전원에게 내보낸다. **예외:** prod 첫 배포 1회(가짜 digest가 stable로 잡혀 10%에서 멈춘 상태)에만 쓴다 |
 
 ## 3. 복구 확인
 
