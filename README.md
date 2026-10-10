@@ -9,27 +9,35 @@
 
 ## 상태
 
-기본 구조(`apps/taxi/base`, `apps/taxi/overlays/dev`, CODEOWNERS)를 만들었다. 클러스터 없이 아래 명령으로 결과를 확인할 수 있다.
+설정은 전부 main에 있고 kind로 동작을 확인했다(P5-01~09). 실제 클러스터는 노드 4대·Calico·Argo CD 본체(Ansible, 차트 `10.10.0`)까지 설치됐고, 다음은 `argocd/root-app.yaml` 등록이다. 진행 기준은 노션 「CD-guide [수정본]」.
+
+| 영역 | 상태 |
+|---|---|
+| `apps/taxi/` (base, dev, prod Rollout·자동 판정 템플릿) | ✅ 작성. 이미지 digest는 아직 자리표시(`sha256:000…`) |
+| `argocd/` (root + 플랫폼 7개 + 앱 2개, 알림 설정) | ✅ 작성 |
+| `platform/` | MetalLB, Envoy Gateway, Sealed Secrets, Argo Rollouts ✅ / PriorityClass, Calico 정책, metrics-server, cert-manager 예정 / 수집 에이전트(Alloy·kube-state-metrics)는 모니터링 담당 PR |
+| `secrets/` | DB SealedSecret은 실제 클러스터의 열쇠로 잠가 추가 예정 |
+
+클러스터 없이 아래 명령으로 결과를 확인할 수 있다.
 
 ```bash
 kubectl kustomize apps/taxi/overlays/dev
+kubectl kustomize apps/taxi/overlays/prod
 ```
-
-`argocd/`, `platform/`, `secrets/`, `overlays/prod/`는 CD 단계를 진행하면서 채운다.
 
 ## 폴더 구조
 
 ```text
 .github/     CODEOWNERS (dev 폴더 외 전체를 DevOps Project Team 소유로)
-argocd/      Application 정의 (App of Apps 루트 포함)            ← 비어 있음
+argocd/      Application 정의 (App of Apps 루트 포함), Argo CD 설치 values
 apps/taxi/
   base/      공통: ConfigMap, Deployment, Service, HTTPRoute, mysql Service + EndpointSlice
   overlays/
     dev/     namespace taxi-dev, 이미지 digest, dev DB 주소, dev 호스트 이름
-    prod/    (예정) Rollout(Canary)
-platform/    Gateway API, Envoy Gateway, cert-manager, MetalLB, metrics-server,   ← 비어 있음
+    prod/    Rollout(Canary), canary Service, PDB, analysis/(자동 판정)
+platform/    Gateway API, Envoy Gateway, cert-manager, MetalLB, metrics-server,
              PriorityClass, Calico 정책, 수집 에이전트(Alloy, kube-state-metrics)
-secrets/     암호화된 SealedSecret만                                ← 비어 있음
+secrets/     암호화된 SealedSecret만
 ```
 
 ### Jenkins(CI)가 바꾸는 곳
@@ -37,9 +45,10 @@ secrets/     암호화된 SealedSecret만                                ← 비
 `apps/taxi/overlays/dev/kustomization.yaml`의 `images[0].digest` 한 줄만 바꾼다.
 
 ```bash
-cd apps/taxi/overlays/dev
-kustomize edit set image ghcr.io/mobility-devops/taxi-backend@sha256:<push한 이미지의 digest>
+sed -i -E 's/(digest: )sha256:[0-9a-f]{64}/\1sha256:<push한 이미지의 digest>/' apps/taxi/overlays/dev/kustomization.yaml
 ```
+
+`kustomize edit set image`는 쓰지 않는다. 파일 전체를 다시 써서 주석이 지워지고 순서가 바뀐다.
 
 ### 앱이 기대하는 것
 

@@ -9,3 +9,5 @@ data:
   MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,prometheus
   # p95 판정(Canary)에 필요한 히스토그램 버킷
   MANAGEMENT_METRICS_DISTRIBUTION_PERCENTILESHISTOGRAM_HTTP_SERVER_REQUESTS: "true"
+  # SLO(0.5초 이내 비율)와 Canary p95 계산용 버킷. 기본 히스토그램 버킷에는 0.5초가 없어 le="0.5"가 비어 있었다 (모니터링 E0)
+  MANAGEMENT_METRICS_DISTRIBUTION_SLO_HTTP_SERVER_REQUESTS: "500ms,1s"

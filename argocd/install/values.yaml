@@ -1,8 +1,9 @@
 # Argo CD 본체 helm values. 본체는 Argo CD가 스스로 설치할 수 없으므로 Ansible이 설치한다.
 # 이 파일은 CD 담당이 제공하는 설치 스펙이다.
 #
-#   helm repo add argo https://argoproj.github.io/argo-helm && helm repo update
-#   helm install argocd argo/argo-cd -n argocd --create-namespace -f argocd/install/values.yaml
+# 실제 설치·업그레이드는 Ansible(DevOps_Infra roles/argocd, argocd_chart_version: 10.10.0)이 한다. 손으로 helm upgrade 하지 않는다.
+#   (연습용) helm repo add argo https://argoproj.github.io/argo-helm && helm repo update
+#   (연습용) helm install argocd argo/argo-cd -n argocd --create-namespace --version 10.10.0 -f argocd/install/values.yaml
 #
 # 초기 admin 비밀번호:
 #   kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
