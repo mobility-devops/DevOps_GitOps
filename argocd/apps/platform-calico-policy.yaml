@@ -1,0 +1,28 @@
+# [wave 0 설정] Calico 전역 egress 정책. 클러스터 밖 db-01·mon-01 로는 정해진 Pod 만 나간다. (아키텍처 7장)
+# Calico 본체(operator·API server)는 Ansible 이 설치하고, 정책은 GitOps(CD)가 관리한다. (Calico Role 11장 합의)
+# Tier·GlobalNetworkPolicy 는 클러스터 범위 리소스라 namespace 가 없다.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-calico-policy
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/mobility-devops/DevOps_GitOps
+    targetRevision: main
+    path: platform/calico-policy
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
