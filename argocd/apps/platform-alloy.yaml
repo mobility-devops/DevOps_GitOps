@@ -1,0 +1,38 @@
+# [wave 1 수집] Grafana Alloy. 노드마다 1개(DaemonSet)로 앱 지표·kube-state-metrics 지표·Pod 로그를 모아 mon-01 로 보낸다.
+# 설정은 platform/alloy/values.yaml. 차트가 PodLogs CRD 를 함께 설치하지만 작아서(약 10KB) ServerSideApply 는 두지 않았다.
+# monitoring 네임스페이스는 Pod Security 라벨 없이 둔다. 로그를 쿠버네티스 API 로 읽어 hostPath·hostNetwork 를 쓰지 않는다. (CD 담당 합의)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-alloy
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  sources:
+    - repoURL: https://grafana.github.io/helm-charts
+      chart: alloy
+      targetRevision: 1.13.0
+      helm:
+        releaseName: alloy
+        valueFiles:
+          - $values/platform/alloy/values.yaml                     # 설정은 GitOps 저장소의 values 파일을 그대로 쓴다
+    - repoURL: https://github.com/mobility-devops/DevOps_GitOps
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

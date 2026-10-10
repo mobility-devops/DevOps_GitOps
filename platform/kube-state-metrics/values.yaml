@@ -1,0 +1,12 @@
+# kube-state-metrics helm values. Pod·노드 상태를 지표로 만든다. Alloy 가 수집해 mon-01 로 보낸다. (아키텍처 8장)
+# argocd/apps/platform-kube-state-metrics.yaml 이 이 파일로 설치한다(wave 1 수집).
+# 손으로 설치할 때(연습용):
+#   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts && helm repo update
+#   helm install kube-state-metrics prometheus-community/kube-state-metrics --version 8.6.0 -n monitoring --create-namespace -f platform/kube-state-metrics/values.yaml
+# 차트 8.6.0 = kube-state-metrics v2.20.0. 컨테이너 포트 이름은 http (Alloy 가 이 이름으로 찾는다)
+# 배치는 스케줄러에 맡긴다 (아키텍처 3장: 도구는 고정 위치 없이 세 worker 에 나눔).
+# PriorityClass 는 따로 지정하지 않는다. 플랫폼 도구 등급이 기본값(globalDefault)이라 자동으로 붙는다. (아키텍처 3장)
+
+resources:                           # 모든 Pod 에 requests (아키텍처 3장). memory limit 만 건다
+  requests: { cpu: 20m, memory: 64Mi }
+  limits: { memory: 192Mi }

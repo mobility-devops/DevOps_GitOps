@@ -1,0 +1,37 @@
+# [wave 1 수집] kube-state-metrics. Pod·노드 상태를 지표로 만든다. Alloy 가 수집해 mon-01 로 보낸다.
+# 설정은 platform/kube-state-metrics/values.yaml. CRD 가 없는 차트라 ServerSideApply 는 두지 않았다.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-kube-state-metrics
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  sources:
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-state-metrics
+      targetRevision: 8.6.0
+      helm:
+        releaseName: kube-state-metrics
+        valueFiles:
+          - $values/platform/kube-state-metrics/values.yaml        # 설정은 GitOps 저장소의 values 파일을 그대로 쓴다
+    - repoURL: https://github.com/mobility-devops/DevOps_GitOps
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
