@@ -14,4 +14,4 @@ patches:
 # Jenkins(CI)는 아래 digest 한 줄만 바꾸는 PR을 만든다.
 images:
   - name: ghcr.io/mobility-devops/taxi-backend
-    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+    digest: sha256:90ca08186b534d15c16a2fe2d58760556f4c436bc7fcf89b96fc2ec0968bbc06
