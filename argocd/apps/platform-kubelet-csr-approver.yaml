@@ -1,0 +1,35 @@
+# [wave -1 컨트롤러] kubelet-csr-approver. kubelet 서빙 인증서 요청(CSR)을 우리 노드 이름·IP일 때만 자동 승인한다. 처음 1회는 Ansible 이 승인했다.
+# 설정은 platform/kubelet-csr-approver/values.yaml.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-kubelet-csr-approver
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  project: default
+  sources:
+    - repoURL: https://postfinance.github.io/kubelet-csr-approver
+      chart: kubelet-csr-approver
+      targetRevision: 1.2.15
+      helm:
+        releaseName: kubelet-csr-approver
+        valueFiles:
+          - $values/platform/kubelet-csr-approver/values.yaml            # 설정은 GitOps 저장소의 values 파일을 그대로 쓴다
+    - repoURL: https://github.com/mobility-devops/DevOps_GitOps
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

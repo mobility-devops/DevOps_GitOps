@@ -1,0 +1,35 @@
+# [wave -1 컨트롤러] metrics-server. kubectl top, HPA 용 CPU·메모리 사용량(metrics.k8s.io). kubelet 서빙 인증서가 승인돼 있어야 동작한다(kubelet-csr-approver).
+# 설정은 platform/metrics-server/values.yaml.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-metrics-server
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  project: default
+  sources:
+    - repoURL: https://kubernetes-sigs.github.io/metrics-server/
+      chart: metrics-server
+      targetRevision: 3.14.0
+      helm:
+        releaseName: metrics-server
+        valueFiles:
+          - $values/platform/metrics-server/values.yaml            # 설정은 GitOps 저장소의 values 파일을 그대로 쓴다
+    - repoURL: https://github.com/mobility-devops/DevOps_GitOps
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

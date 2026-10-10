@@ -9,13 +9,13 @@
 
 ## 상태
 
-설정은 전부 main에 있고 kind로 동작을 확인했다(P5-01~09). 실제 클러스터에 `argocd/root-app.yaml`을 등록해 플랫폼·DB SealedSecret·dev 앱·수집 에이전트까지 올렸다(10-10). 다음은 빠진 플랫폼(metrics-server)과 prod 첫 배포다. 진행 기준은 노션 「CD-guide [수정본]」.
+설정은 전부 main에 있고 kind로 동작을 확인했다(P5-01~09). 실제 클러스터에 `argocd/root-app.yaml`을 등록해 플랫폼·DB SealedSecret·dev 앱·수집 에이전트까지 올렸다(10-10). 다음은 prod 첫 배포다. 진행 기준은 노션 「CD-guide [수정본]」.
 
 | 영역 | 상태 |
 |---|---|
 | `apps/taxi/` (base, dev, prod Rollout·자동 판정 템플릿) | ✅ 작성. dev digest 지정·배포 확인, prod digest는 아직 자리표시(`sha256:000…`) |
 | `argocd/` (root + 플랫폼 + 앱 2개, 알림 설정) | ✅ 작성, 실제 클러스터 등록 |
-| `platform/` | MetalLB, Envoy Gateway, Sealed Secrets, Argo Rollouts, PriorityClass, Calico egress 정책, 수집 에이전트(Alloy·kube-state-metrics, 모니터링 담당) ✅ / metrics-server, cert-manager 예정 |
+| `platform/` | MetalLB, Envoy Gateway, Sealed Secrets, Argo Rollouts, PriorityClass, Calico egress 정책, metrics-server·kubelet-csr-approver, 수집 에이전트(Alloy·kube-state-metrics, 모니터링 담당) ✅ / cert-manager 예정(선택) |
 | `secrets/` | ✅ DB SealedSecret(dev·prod), 실제 클러스터의 열쇠로 잠금 |
 
 클러스터 없이 아래 명령으로 결과를 확인할 수 있다.
