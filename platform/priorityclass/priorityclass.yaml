@@ -1,0 +1,30 @@
+# 자리가 모자랄 때 누가 먼저 밀려나는지 정한다. (아키텍처 3장)
+#   taxi-high    : Gateway(Envoy)·prod 앱
+#   platform     : 플랫폼 도구. globalDefault 라서 따로 지정하지 않은 Pod 는 모두 이 등급
+#   taxi-dev-low : dev 앱. worker 1대만 남으면 가장 먼저 밀려난다
+# globalDefault 는 새로 만드는 Pod 에만 붙는다. 이미 떠 있던 Pod 는 재시작해야 등급이 바뀐다.
+# Calico·CoreDNS 등 system-node-critical / system-cluster-critical 을 직접 지정한 Pod 는 그대로다.
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: taxi-high
+value: 100000
+globalDefault: false
+description: "Gateway(Envoy), prod 앱"
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: platform
+value: 10000
+globalDefault: true
+description: "플랫폼 도구 (기본값)"
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: taxi-dev-low
+value: 1000
+globalDefault: false
+preemptionPolicy: Never     # dev 가 다른 Pod 를 밀어내지는 않는다
+description: "dev 앱"

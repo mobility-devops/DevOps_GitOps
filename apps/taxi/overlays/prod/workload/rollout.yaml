@@ -19,6 +19,7 @@ spec:
     spec:
       terminationGracePeriodSeconds: 0     # 빌드 때 base 값으로 채워짐
       securityContext: {}                  # 빌드 때 base 값으로 채워짐
+      priorityClassName: taxi-high         # prod 앱은 가장 높은 등급 (아키텍처 3장). replacements 대상이 아니라 그대로 남음
       # 머신 기준 + 노드 기준으로 고르게 나눈다. (아키텍처 3장)
       topologySpreadConstraints:
         - maxSkew: 1
