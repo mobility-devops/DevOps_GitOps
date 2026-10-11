@@ -26,6 +26,7 @@
 | --- | --- | --- |
 | `taxi-dev/taxi-db.yaml` | `taxi-dev/taxi-db` (`DB_USERNAME`, `DB_PASSWORD`) | `apps/taxi/overlays/dev` |
 | `taxi-prod/taxi-db.yaml` | `taxi-prod/taxi-db` (`DB_USERNAME`, `DB_PASSWORD`) | `apps/taxi/overlays/prod` |
+| `argocd/argocd-notifications-secret.yaml` | `argocd/argocd-notifications-secret` (`slack-token`) | `platform/argocd-route` (Argo CD 알림) |
 
 - 환경별 폴더(`taxi-dev/`, `taxi-prod/`)를 각 overlay가 `resources`로 불러온다. 그래서 앱과 같은 Argo CD Application이 같은 sync에서 적용한다(namespace → SealedSecret → 앱 순서).
 - 파일을 추가하면 그 폴더의 `kustomization.yaml` `resources`에도 적는다.
