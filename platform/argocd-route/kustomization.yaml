@@ -3,3 +3,4 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - httproute.yaml
+  - ../../secrets/argocd              # Argo CD 알림 Slack 토큰 (SealedSecret). secrets/ 는 CODEOWNERS 승인 대상
