@@ -15,6 +15,20 @@ patches:
     target:
       kind: HTTPRoute
       name: taxi
+  # 고장 주입 스위치 (백엔드 FAULT_MODE, CD 가이드 E1·E2). 값을 바꾸면 Pod 설정이 바뀌어 새 Canary가 돈다.
+  #   none: 평소와 같음 / error: 500 반환 / slow: FAULT_DELAY_MS(기본 700ms)만큼 지연. /actuator/** 는 고장에서 빠짐
+  #   FAULT_RATE: 요청 중 고장 낼 비율(0.0~1.0). 시험이 끝나면 none 으로 되돌린다(docs/runbook-rollback.md).
+  - target:
+      kind: Rollout
+      name: taxi
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env
+        value:
+          - name: FAULT_MODE
+            value: none
+          - name: FAULT_RATE
+            value: "0.05"
 # Jenkins(CI)는 vX.Y.Z 릴리스 때 아래 digest 한 줄만 바꾸는 PR을 만든다. (dev에서 검증한 같은 이미지)
 images:
   - name: ghcr.io/mobility-devops/taxi-backend
