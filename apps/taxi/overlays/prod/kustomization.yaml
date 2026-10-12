@@ -26,9 +26,9 @@ patches:
         path: /spec/template/spec/containers/0/env
         value:
           - name: FAULT_MODE
-            value: error
+            value: none
           - name: FAULT_RATE
-            value: "1.0"
+            value: "0.05"
 # Jenkins(CI)는 vX.Y.Z 릴리스 때 아래 digest 한 줄만 바꾸는 PR을 만든다. (dev에서 검증한 같은 이미지)
 images:
   - name: ghcr.io/mobility-devops/taxi-backend
