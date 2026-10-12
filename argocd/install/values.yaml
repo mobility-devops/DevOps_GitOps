@@ -126,12 +126,14 @@ notifications:
         send: [app-deployed]
         when: app.status.operationState != nil and app.status.operationState.phase in ['Succeeded'] and app.status.health.status == 'Healthy'
 
+  # 커밋은 저장소 최신(sync.revision)이 아니라 실제로 적용한 커밋(operationState.syncResult.revision)을 보여 준다.
+  # sync.revision은 앱과 무관한 커밋에도 바뀌어, 알림의 커밋이 배포된 것과 다를 수 있다. (sync 실패는 시도한 커밋이라 sync.revision 그대로)
   templates:
     template.app-health-degraded: |
       message: |
         :red_circle: *{{.app.metadata.name}}* 가 Degraded 상태입니다. (Canary 자동 롤백 또는 장애)
         사용자는 이전 버전을 쓰고 있을 수 있습니다. Runbook에 따라 확인 후 되돌림 PR을 올려 주세요.
-        • 커밋: {{.app.status.sync.revision}}
+        • 적용한 커밋(되돌림 대상): {{$rev := .app.status.sync.revision}}{{with .app.status.operationState}}{{with .syncResult}}{{$rev = .revision}}{{end}}{{end}}<https://github.com/mobility-devops/DevOps_GitOps/commit/{{$rev}}|{{printf "%.7s" $rev}}>
         • Argo CD: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}
         • Runbook: https://github.com/mobility-devops/DevOps_GitOps/blob/main/docs/runbook-rollback.md
     template.app-health-suspended: |
@@ -139,7 +141,7 @@ notifications:
         :large_yellow_circle: *{{.app.metadata.name}}* 배포가 멈춰 사람의 결정을 기다립니다.
         (Canary 판정 불가: 새 버전 요청이 부족 / 또는 수동 승인 단계)
         롤백도 승격도 하지 않은 상태입니다. Runbook의 '배포가 멈췄을 때' 절차에 따라 promote 또는 abort를 결정해 주세요.
-        • 커밋: {{.app.status.sync.revision}}
+        • 적용한 커밋: {{$rev := .app.status.sync.revision}}{{with .app.status.operationState}}{{with .syncResult}}{{$rev = .revision}}{{end}}{{end}}<https://github.com/mobility-devops/DevOps_GitOps/commit/{{$rev}}|{{printf "%.7s" $rev}}>
         • Argo CD: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}
         • Runbook: https://github.com/mobility-devops/DevOps_GitOps/blob/main/docs/runbook-rollback.md
     template.app-sync-failed: |
@@ -151,5 +153,5 @@ notifications:
     template.app-deployed: |
       message: |
         :large_green_circle: *{{.app.metadata.name}}* 배포 완료 (Healthy)
-        • 커밋: {{.app.status.sync.revision}}
+        • 적용한 커밋: <https://github.com/mobility-devops/DevOps_GitOps/commit/{{.app.status.operationState.syncResult.revision}}|{{printf "%.7s" .app.status.operationState.syncResult.revision}}>
         • Argo CD: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}
