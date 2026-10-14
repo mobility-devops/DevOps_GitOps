@@ -32,6 +32,14 @@ spec:
       destination:
         nets: ["192.168.56.41/32"]
         ports: [9090, 3100]
+    # Argo Rollouts Canary 판정 쿼리 (지우면 prod 배포가 전부 Error로 멈춤, 장애 시나리오 CD-3)
+    - action: Allow
+      protocol: TCP
+      source:
+        namespaceSelector: kubernetes.io/metadata.name == "argo-rollouts"
+      destination:
+        nets: ["192.168.56.41/32"]
+        ports: [9090]
     - action: Deny
       destination:
         nets: ["192.168.56.31/32", "192.168.56.41/32"]
