@@ -8,6 +8,7 @@ resources:
   - service-canary.yaml
   - pdb.yaml
   - analysis                             # Canary 자동 판정 템플릿 (Rollout steps에서 사용)
+  - backendtrafficpolicy.yaml            # Envoy active 헬스체크·연결 실패 재시도 (10-14 Server 1)
 patches:
   - path: delete-deployment.yaml         # 복사가 끝난 base Deployment를 지운다 (prod는 Rollout만 씀)
   - path: patch-config.yaml              # DB 이름 taxi_prod
