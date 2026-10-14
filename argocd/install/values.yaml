@@ -108,6 +108,7 @@ notifications:
         - on-health-degraded
         - on-health-suspended
         - on-sync-failed
+        - on-sync-status-unknown
   # 배포 완료(on-deployed)는 prod만 받는다. 커밋마다 모든 앱에서 울리면 시끄러워서
   # argocd/apps/taxi-prod.yaml에 annotation으로 따로 구독한다.
 
@@ -124,6 +125,10 @@ notifications:
       - description: sync 실패
         send: [app-sync-failed]
         when: app.status.operationState != nil and app.status.operationState.phase in ['Error', 'Failed']
+    trigger.on-sync-status-unknown: |
+      - description: Git 내용을 읽거나 만들지 못해 비교할 수 없음 (ComparisonError)
+        send: [app-sync-status-unknown]
+        when: app.status.sync.status == 'Unknown'
     trigger.on-deployed: |
       - description: 새 커밋이 적용되고 Healthy. 실제로 sync한 커밋마다 한 번
         # sync.revision은 저장소에 커밋이 생길 때마다 바뀌어(앱과 무관한 커밋 포함) 매번 울린다.
@@ -156,6 +161,12 @@ notifications:
         • 원인: {{.app.status.operationState.message}}
         • 커밋: {{.app.status.sync.revision}}
         • Argo CD: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}
+    template.app-sync-status-unknown: |
+      message: |
+        :large_orange_circle: *{{.app.metadata.name}}* 가 Git 내용을 읽지 못해 배포가 멈추었습니다.
+        떠 있는 앱은 이전 상태 그대로입니다. 매니페스트 오류나 GitHub 연결을 확인해 주세요.
+        {{range .app.status.conditions}}• {{.type}}: {{.message}}
+        {{end}}• Argo CD: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}
     template.app-deployed: |
       message: |
         :large_green_circle: *{{.app.metadata.name}}* 배포 완료 (Healthy)
