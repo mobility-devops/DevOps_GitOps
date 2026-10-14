@@ -9,6 +9,12 @@
 #   kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
 global:
   domain: argocd.192-168-56-200.sslip.io
+  # Argo CD 구성요소를 모두 호스트 worker(worker1·2)에 둔다. (10-14 Server 1)
+  # 컨트롤러가 노트북에 있으면 노트북 장애 동안 동기화가 멈추고, StatefulSet이라 노드가 돌아올 때까지 옮겨 가지도 못한다.
+  # 차트 기본값(kubernetes.io/os: linux)을 덮어쓰므로 같이 적는다. 적용은 Ansible(playbooks/argocd.yml) 재실행.
+  nodeSelector:
+    kubernetes.io/os: linux
+    topology.kubernetes.io/zone: host
 
 configs:
   cm:
