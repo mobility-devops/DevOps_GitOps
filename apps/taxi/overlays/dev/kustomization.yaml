@@ -5,6 +5,7 @@ resources:
   - ../../base
   - namespace.yaml
   - ../../../../secrets/taxi-dev          # SealedSecret(DB 계정). secrets/ 는 CODEOWNERS 승인 대상
+  - chaos-not-exist.yaml                # 장애 주입: 없는 파일 (CD-2)
 patches:
   - path: patch-config.yaml
   - path: patch-httproute.yaml
