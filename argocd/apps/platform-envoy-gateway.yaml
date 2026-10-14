@@ -15,6 +15,25 @@ spec:
     targetRevision: v1.9.2
     helm:
       releaseName: eg
+      # 컨트롤러(설정을 프록시에 내려 주는 쪽)는 호스트 worker(worker1·2)에만 2개 둔다.
+      # 노트북에 있으면 노트북 장애 동안 프록시 설정이 갱신되지 않아, 죽은 Pod로 계속 요청을 보낸다. (10-14 Server 1 1차)
+      # 2개는 리더 선출(기본 lease 15초)로 리더 1개가 상태·인프라를 맡고, 프록시는 둘 중 어느 쪽에서든 설정을 받는다.
+      # anti-affinity를 required로 하면 호스트 worker가 2대뿐이라 롤링 업데이트 때 새 Pod가 못 떠서 preferred로 둔다.
+      valuesObject:
+        deployment:
+          replicas: 2
+          pod:
+            nodeSelector:
+              topology.kubernetes.io/zone: host
+            affinity:
+              podAntiAffinity:
+                preferredDuringSchedulingIgnoredDuringExecution:
+                  - weight: 100
+                    podAffinityTerm:
+                      topologyKey: kubernetes.io/hostname
+                      labelSelector:
+                        matchLabels:
+                          control-plane: envoy-gateway
   destination:
     server: https://kubernetes.default.svc
     namespace: envoy-gateway-system
